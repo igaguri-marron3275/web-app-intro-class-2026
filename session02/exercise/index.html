@@ -3,15 +3,59 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>自己紹介ページ</title>
+    <title>HTML練習ページ</title>
   </head>
   <body>
     <!-- ============================================
          実習2: 基本的なHTMLページ
          まずは以下のh1とpを自分の内容に書き換えてみよう
     ============================================ -->
-    <h1>はじめてのWebページ</h1>
-    <p>HTMLの勉強を始めました！</p>
+    <header>
+        <h1>Name：いがぐり</h1>
+        <a href="#about">自己紹介</a>
+        <a href="#hobby">趣味</a>
+        <a href=""></a>
+
+    </header>
+    <main>
+        <section id="about">
+            <h2>自己紹介</h2>
+            <p>いろいろと勉強中です</p>
+            <p></p>
+        </section>
+        <section id="hobby">
+            <h2>趣味</h2>
+            <ul>
+            <li>読書</li>
+            <li>散歩</li>
+            <li>ゲーム</li>
+            </ul>
+        </section>    
+
+        <section id="images">
+            <a href="https://ja.wikipedia.org/wiki/%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%9A%E3%83%BC%E3%82%B8" target="_blank">Wikipediaトップページへ移動(別タブが開きます)<br><br></a>
+            <img src="https://nekozukan.com/wp-content/uploads/2025/05/bfd4ed24c47d95d3720d4fee3e410bdd.jpg.webp" alt="ベンガルヤマネコの写真"
+            width="200" height="200">
+            <p>画像出典：<a href="https://nekozukan.com/prionailurus-bengalensis/" target="_blank">ベンガルヤマネコ図鑑｜アジア全域に生息する小さなヒョウ | ネコ科図鑑</a></p>
+        </section>
+        
+        <section id="contact">
+            <h2>お問い合わせ</h2>
+            <form>
+                <label for="name">名前:</label>
+                    <input type="text" id="name" placeholder="山田太郎">
+                <label for="email">メール:</label>
+                    <input type="email" id="email" placeholder="example@mail.com">
+                <button type="submit">送信</button>
+            </form>
+        </section>
+
+    </main>
+
+
+    
+
+
 
     <!-- ============================================
          実習3: 自己紹介ページを作ろう
