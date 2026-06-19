@@ -85,13 +85,20 @@ def create_todo(todo: TodoCreate):
     """タイトルを受け取り、新しいTODOを追加する"""
     # ヒント:
     #   1. conn = sqlite3.connect(DATABASE) で接続し、cursor = conn.cursor()
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
     #   2. cursor.execute(
     #          "INSERT INTO todos (title, done) VALUES (?, 0)", (todo.title,)
     #      )
+    cursor.execute("INSERT INTO todos (title, done) VALUES (?, 0)", (todo.title,))
     #   3. conn.commit() で確定
+    conn.commit()
     #   4. new_id = cursor.lastrowid で新しいIDを取得
+    new_id = cursor.lastrowid
     #   5. conn.close() で閉じる
+    conn.close()
     #   6. {"id": new_id, "title": todo.title, "done": False} を返す
+    return {"id": new_id, "title": todo.title, "done": False}
     pass
 
 
@@ -110,6 +117,34 @@ def update_todo(todo_id: int, todo: TodoUpdate):
     #   5. conn.commit(), conn.close()
     #   6. {"id": todo_id, "title": existing[0], "done": todo.done} を返す
     #      （existing は (title,) のタプルなので先頭を取り出す）
+
+    @app.put("/todos/{todo_id}")
+    def update_todo(todo_id:int,todo:TodoUpdate):
+        conn=sqlite3.connect(DATABASE)
+        cursor=conn.cursor()
+        
+        #まず対象のTODOが存在するか確認
+        cursor.execute("SELECTtitleFROMtodosWHEREid=?",(todo_id,))
+        existing=cursor.fetchone()
+        if existing is None: 
+            conn.close()
+            raise HTTPException(status_code=404,detail="TODOnotfound")
+        
+        #doneを更新
+        cursor.execute(
+            "UPDATEtodosSETdone=?WHEREid=?",
+            (int(todo.done),todo_id)
+        )
+        conn.commit()
+        conn.close()
+        
+        #existingは(title,)のタプルなので先頭を取り出す
+        return{
+            "id":todo_id,
+            "title":existing[0],
+            "done":todo.done
+        }
+
     pass
 
 
@@ -127,8 +162,25 @@ def delete_todo(todo_id: int):
     #   4. cursor.execute("DELETE FROM todos WHERE id = ?", (todo_id,))
     #   5. conn.commit(), conn.close()
     #   6. {"message": "TODO deleted", "id": todo_id} を返す
-    pass
 
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    # まず対象のTODOが存在するか確認
+    cursor.execute("SELECT id FROM todos WHERE id = ?", (todo_id,))
+    existing = cursor.fetchone()
+    if existing is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="TODO not found")
+    
+    # 削除
+    cursor.execute("DELETE FROM todos WHERE id = ?", (todo_id,))
+    conn.commit()
+    conn.close()
+
+    return {"message": "TODO deleted", "id": todo_id}
+
+    pass
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
