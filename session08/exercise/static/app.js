@@ -18,18 +18,18 @@ const API_URL = "/todos";
 async function loadTodos() {
   // TODO(実習5): try-catch でエラーハンドリングを追加してください
   //   ヒント:
-  //   try {
-  //     const response = await fetch(API_URL);
-  //     if (!response.ok) {
-  //       const error = await response.json();
-  //       showError(error.detail || "TODOの取得に失敗しました");
-  //       return;
-  //     }
-  //     const todos = await response.json();
-  //     renderTodos(todos);
-  //   } catch (error) {
-  //     showError("通信エラーが発生しました");
-  //   }
+     try {
+       const response = await fetch(API_URL);
+       if (!response.ok) {
+         const error = await response.json();
+         showError(error.detail || "TODOの取得に失敗しました");
+         return;
+       }
+       const todos = await response.json();
+       renderTodos(todos);
+     } catch (error) {
+       showError("通信エラーが発生しました");
+     }
 
   const response = await fetch(API_URL);
   const todos = await response.json();
@@ -45,8 +45,23 @@ async function addTodo() {
 
   // TODO(実習4): クライアント側バリデーションを追加してください
   //   1. title === "" なら showError("TODOのタイトルを入力してください") で return
-  //   2. title.length > 100 なら showError("タイトルは100文字以内で入力してください") で return
+  if (title === "") {
+    showError('TODOのタイトルを入力してください');
+    return;
+  }
 
+  //   2. title.length > 100 なら showError("タイトルは100文字以内で入力してください") で return
+  if (title.length > 100) {
+    showError('タイトルは100文字以内で入力してください');
+    return;
+  }
+
+  fetch('/todos',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({title:title})
+  });
+  
   // TODO(実習5): try-catch でエラーハンドリングを追加してください
   const response = await fetch(API_URL, {
     method: "POST",
@@ -77,6 +92,30 @@ async function toggleTodo(id, currentDone) {
  */
 async function deleteTodo(id) {
   // TODO(実習5): try-catch でエラーハンドリングを追加してください
+
+  async function deleteTodo(id) {
+    try {
+      const response = await fetch(`/todos/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        // HTTPエラーの場合
+        const error = await response.json();
+        showError(error.detail || 'エラーが発生しました');
+        return;
+      }
+
+      // 成功時: TODOリストを再描画
+      await loadTodos();
+
+    } catch (error) {
+      // ネットワークエラー等の場合
+      showError('通信エラーが発生しました。ネットワークを確認してください');
+    }
+  }
+
+
   await fetch(`${API_URL}/${id}`, {
     method: "DELETE",
   });
@@ -96,7 +135,7 @@ async function deleteTodo(id) {
  */
 function renderTodos(todos) {
   const list = document.getElementById("todo-list");
-  list.innerHTML = "";
+  //list.innerHTML = "";
 
   todos.forEach((todo) => {
     const li = document.createElement("li");
@@ -132,15 +171,22 @@ function renderTodos(todos) {
     //     li.appendChild(deleteBtn);
 
     // 危険！ innerHTML を使用（XSS脆弱性あり）
-    li.innerHTML = `
-      <label class="todo-label">
-        <input type="checkbox" class="todo-checkbox"
-          ${todo.done ? "checked" : ""}
-          onchange="toggleTodo(${todo.id}, ${todo.done})">
-        <span class="todo-title">${todo.title}</span>
-      </label>
+    //li.innerHTML = `
+    //  <label class="todo-label">
+    //    <input type="checkbox" class="todo-checkbox"
+    //      ${todo.done ? "checked" : ""}
+    //      onchange="toggleTodo(${todo.id}, ${todo.done})">
+    //    <span class="todo-title">${todo.title}</span>
+    //  </label>
+
+      const span = document.createElement('span');
+      span.textContent = todo.title;
+      li.appendChild(span);
+      
       <button class="delete-button" onclick="deleteTodo(${todo.id})">削除</button>
-    `;
+    //`;
+
+    
 
     list.appendChild(li);
   });
@@ -152,14 +198,14 @@ function renderTodos(todos) {
 
 // TODO(実習5): showError 関数を実装してください
 //   ヒント:
-//   function showError(message) {
-//     const errorDiv = document.getElementById("error-message");
-//     errorDiv.textContent = message;
-//     errorDiv.style.display = "block";
-//     setTimeout(() => {
-//       errorDiv.style.display = "none";
-//     }, 5000);
-//   }
+   function showError(message) {
+     const errorDiv = document.getElementById("error-message");
+     errorDiv.textContent = message;
+     errorDiv.style.display = "block";
+     setTimeout(() => {
+       errorDiv.style.display = "none";
+     }, 5000);
+   }
 
 // ============================================================
 // イベントリスナー
