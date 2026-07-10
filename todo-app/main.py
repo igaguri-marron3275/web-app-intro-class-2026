@@ -3,6 +3,7 @@ TODOアプリ バックエンド - 完成版
 第8回: セキュリティの基礎 & 総仕上げ
 """
 
+import os  # ファイルパス操作用
 import sqlite3  # Python標準のデータベース（SQLite）を使うためのライブラリ
 import uvicorn  # FastAPIアプリを動かすためのWebサーバー
 
@@ -158,7 +159,10 @@ def delete_todo(todo_id: int):
 
 # --- 静的ファイル配信 ---
 # static フォルダの中身（index.html など）をそのままブラウザに表示できるようにする
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+# このファイルのディレクトリを基準に、static フォルダの絶対パスを作る
+# これにより、どのディレクトリから main.py を実行しても正しく動く
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 # --- アプリ起動時にDBを初期化 ---
 # プログラムが読み込まれたタイミングで、テーブルが無ければ作っておく

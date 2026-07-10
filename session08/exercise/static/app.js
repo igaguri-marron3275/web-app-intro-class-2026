@@ -183,7 +183,7 @@ function renderTodos(todos) {
       span.textContent = todo.title;
       li.appendChild(span);
       
-      <button class="delete-button" onclick="deleteTodo(${todo.id})">削除</button>
+      //<button class="delete-button" onclick="deleteTodo(${todo.id})">削除</button>
     //`;
 
     
