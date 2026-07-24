@@ -16,17 +16,17 @@
  *   async / await を使って「結果が返ってくるまで待つ」書き方をしている。
  */
 
-// サーバー側のAPIのアドレス（main.py の @app.get("/todos") などに対応）
-const API_URL = "/todos";
+// サーバー側のAPIのアドレス（main.py の @app.get("/records") などに対応）
+const API_URL = "/records";
 
 // ============================================================
-// TODO操作（CRUD）
+// 学習記録操作（CRUD）
 // ============================================================
 
 /**
  * TODO一覧を取得して表示する
  */
-async function loadTodos() {
+async function loadRecords() {
   // try ... catch: 通信中にエラーが起きても、アプリが止まらないようにする
   try {
     // サーバーに「一覧をください」とお願いし、返事(response)を待つ
@@ -49,9 +49,9 @@ async function loadTodos() {
 }
 
 /**
- * 新しいTODOを追加する
+ * 新しい学習記録を追加する
  */
-async function addTodo() {
+async function addRecord() {
   // 入力欄の要素を取得し、入力された文字を読み取る（trimで前後の空白を除去）
   const input = document.getElementById("todo-input");
   const title = input.value.trim();
@@ -93,7 +93,7 @@ async function addTodo() {
  * TODOの完了状態を切り替える
  * id: 対象のTODOの番号 / currentDone: いまの完了状態(true/false)
  */
-async function toggleTodo(id, currentDone) {
+async function toggleRecord(id, currentDone) {
   try {
     // `${API_URL}/${id}` で /todos/5 のようなアドレスを作る（id=5のTODOが対象）
     const response = await fetch(`${API_URL}/${id}`, {
@@ -118,7 +118,7 @@ async function toggleTodo(id, currentDone) {
  * TODOを削除する
  * id: 削除したいTODOの番号
  */
-async function deleteTodo(id) {
+async function deleteRecord(id) {
   try {
     // /todos/5 のようなアドレスに対して削除を依頼する
     const response = await fetch(`${API_URL}/${id}`, {
@@ -151,12 +151,12 @@ async function deleteTodo(id) {
  *  実行されてしまう危険がある（XSS）。そこで textContent を使い、
  *  入力を「ただの文字」として扱うことで、この攻撃を防いでいる。
  */
-function renderTodos(todos) {
-  const list = document.getElementById("todo-list");
+function renderRecords(records) {
+  const list = document.getElementById("record-list");
   list.innerHTML = ""; // 古い表示を一度すべて消してから描き直す
 
-  // todos配列の1件ずつ(todo)について、リストの行を作る
-  todos.forEach((todo) => {
+  // records配列の1件ずつ(record)について、リストの行を作る
+  records.forEach((record) => {
     // <li> 完了済みなら "done" クラスを足して見た目を変える
     const li = document.createElement("li");
     li.className = "todo-item" + (todo.done ? " done" : "");
