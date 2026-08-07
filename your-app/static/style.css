@@ -45,7 +45,7 @@ body {
 /* 学習記録一覧をのせる白いカード部分 */
 .record-card {
   background-color: white;
-  max-width: 600px; /* これ以上は横に広がらない（読みやすさのため） */
+  max-width: 800px; /* これ以上は横に広がらない（読みやすさのため） */
   width: 100%; /* 画面が狭いときは横幅いっぱいに */
   margin: 24px auto; /* 上下24px / 左右autoで中央に寄せる */
   padding: 32px; /* 内側の余白 */
