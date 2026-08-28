@@ -16,17 +16,17 @@
  *   async / await を使って「結果が返ってくるまで待つ」書き方をしている。
  */
 
-// サーバー側のAPIのアドレス（main.py の @app.get("/todos") などに対応）
-const API_URL = "/todos";
+// サーバー側のAPIのアドレス（main.py の @app.get("/records") などに対応）
+const API_URL = "/records";
 
 // ============================================================
-// TODO操作（CRUD）
+// 学習記録操作（CRUD）
 // ============================================================
 
 /**
  * TODO一覧を取得して表示する
  */
-async function loadTodos() {
+async function loadRecords() {
   // try ... catch: 通信中にエラーが起きても、アプリが止まらないようにする
   try {
     // サーバーに「一覧をください」とお願いし、返事(response)を待つ
@@ -40,8 +40,8 @@ async function loadTodos() {
     }
 
     // 返ってきたデータ(JSON)をJavaScriptの配列に変換する
-    const todos = await response.json();
-    renderTodos(todos); // 画面に描画する
+    const records = await response.json();
+    renderRecords(records); // 画面に描画する
   } catch (error) {
     // そもそもサーバーにつながらなかったときなど
     showError("通信エラーが発生しました");
@@ -49,16 +49,18 @@ async function loadTodos() {
 }
 
 /**
- * 新しいTODOを追加する
+ * 新しい学習記録を追加する
  */
-async function addTodo() {
+async function addRecord() {
   // 入力欄の要素を取得し、入力された文字を読み取る（trimで前後の空白を除去）
-  const input = document.getElementById("todo-input");
-  const title = input.value.trim();
+  const title = document.getElementById("title-input").value.trim();
+  const category = document.getElementById("category-input").value;
+  const study_date = document.getElementById("study-date-input").value;
+  const understanding = document.getElementById("understanding-input").value;
 
   // 送信前のチェック（バリデーション）: 空のときは送らずに注意を表示
   if (title === "") {
-    showError("TODOのタイトルを入力してください");
+    showError("学習記録のタイトルを入力してください");
     return;
   }
 
@@ -73,17 +75,20 @@ async function addTodo() {
     const response = await fetch(API_URL, {
       method: "POST", // POST = 新しいデータを作る
       headers: { "Content-Type": "application/json" }, // 中身はJSON形式だと伝える
-      body: JSON.stringify({ title: title }), // データをJSON文字列にして送る
+      body: JSON.stringify({ title: title, category: category, study_date: study_date, understanding: understanding }), // データをJSON文字列にして送る
     });
 
     if (!response.ok) {
       const error = await response.json();
-      showError(error.detail || "TODOの追加に失敗しました");
+      showError(error.detail || "学習記録の追加に失敗しました");
       return;
     }
 
-    input.value = ""; // 入力欄を空に戻す
-    await loadTodos(); // 一覧を取り直して、追加結果を画面に反映する
+    document.getElementById("title-input").value = ""; // 入力欄を空に戻す
+    document.getElementById("category-input").value = ""; // カテゴリ入力欄を空に戻す
+    document.getElementById("study-date-input").value = ""; // 学習日入力欄を空に戻す
+    document.getElementById("understanding-input").value = ""; // 理解度入力欄を空に戻す
+    await loadRecords(); // 一覧を取り直して、追加結果を画面に反映する
   } catch (error) {
     showError("通信エラーが発生しました");
   }
@@ -93,34 +98,34 @@ async function addTodo() {
  * TODOの完了状態を切り替える
  * id: 対象のTODOの番号 / currentDone: いまの完了状態(true/false)
  */
-async function toggleTodo(id, currentDone) {
+async function updateRecord(id, currentReviewed, study_date, understanding) {
   try {
     // `${API_URL}/${id}` で /todos/5 のようなアドレスを作る（id=5のTODOが対象）
     const response = await fetch(`${API_URL}/${id}`, {
       method: "PUT", // PUT = 既存のデータを更新する
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ done: !currentDone }), // !で完了/未完了を反転させる
+      body: JSON.stringify({ reviewed: currentReviewed, study_date: study_date, understanding: understanding }),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      showError(error.detail || "TODOの更新に失敗しました");
+      showError(error.detail || "学習記録の更新に失敗しました");
       return;
     }
 
-    await loadTodos(); // 一覧を取り直して、更新結果を画面に反映する
+    await loadRecords(); // 一覧を取り直して、更新結果を画面に反映する
   } catch (error) {
     showError("通信エラーが発生しました");
   }
 }
 
 /**
- * TODOを削除する
- * id: 削除したいTODOの番号
+ * 学習記録を削除する
+ * id: 削除したい学習記録の番号
  */
-async function deleteTodo(id) {
+async function deleteRecord(id) {
   try {
-    // /todos/5 のようなアドレスに対して削除を依頼する
+    // /records/5 のようなアドレスに対して削除を依頼する
     const response = await fetch(`${API_URL}/${id}`, {
       method: "DELETE", // DELETE = データを削除する
     });
@@ -131,7 +136,7 @@ async function deleteTodo(id) {
       return;
     }
 
-    await loadTodos(); // 一覧を取り直して、削除結果を画面に反映する
+    await loadRecords(); // 一覧を取り直して、削除結果を画面に反映する
   } catch (error) {
     showError("通信エラーが発生しました");
   }
@@ -142,41 +147,67 @@ async function deleteTodo(id) {
 // ============================================================
 
 /**
- * TODOリストを描画する（XSS対策: createElement + textContent）
+ * 学習記録リストを描画する（XSS対策: createElement + textContent）
  *
- * 受け取ったTODOの配列をもとに、画面に並べる<li>を1件ずつ組み立てる。
+ * 受け取った学習記録の配列をもとに、画面に並べる<li>を1件ずつ組み立てる。
  *
  * 【XSS対策のポイント】
  *  innerHTML に文字列を直接入れると、入力に紛れ込んだ<script>などが
  *  実行されてしまう危険がある（XSS）。そこで textContent を使い、
  *  入力を「ただの文字」として扱うことで、この攻撃を防いでいる。
  */
-function renderTodos(todos) {
-  const list = document.getElementById("todo-list");
+function renderRecords(records) {
+  const list = document.getElementById("record-list");
   list.innerHTML = ""; // 古い表示を一度すべて消してから描き直す
 
-  // todos配列の1件ずつ(todo)について、リストの行を作る
-  todos.forEach((todo) => {
+  // records配列の1件ずつ(record)について、リストの行を作る
+  records.forEach((record) => {
     // <li> 完了済みなら "done" クラスを足して見た目を変える
     const li = document.createElement("li");
-    li.className = "todo-item" + (todo.done ? " done" : "");
+    li.className = "record-item" + (record.reviewed ? " done" : "");
 
     // チェックボックスとタイトルをまとめる<label>
     const label = document.createElement("label");
-    label.className = "todo-label";
+    label.className = "record-label";
 
     // 完了チェックボックス
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
-    checkbox.className = "todo-checkbox";
-    checkbox.checked = todo.done; // いまの完了状態をチェックに反映
+    checkbox.className = "record-checkbox";
+    checkbox.checked = record.reviewed; // いまの完了状態をチェックに反映
     // チェックが変わったら、完了状態を切り替える関数を呼ぶ
-    checkbox.addEventListener("change", () => toggleTodo(todo.id, todo.done));
+    checkbox.addEventListener("change", () => updateRecord(record.id, checkbox.checked, detailsSpan.value, understandingSpan.value));
 
-    // TODOのタイトル文字。textContent で安全に入れる（XSS対策）
+    // 学習記録のタイトル文字。textContent で安全に入れる（XSS対策）
     const titleSpan = document.createElement("span");
-    titleSpan.className = "todo-title";
-    titleSpan.textContent = todo.title;
+    titleSpan.className = "record-title";
+    titleSpan.textContent = record.title;
+    titleSpan.title = `カテゴリ: ${record.category}\n学習日: ${record.study_date}\n理解度: ${record.understanding}`;
+
+    // 日付の表示
+    const detailsSpan = document.createElement("input");
+    detailsSpan.className = "record-details";
+    detailsSpan.type = "date";
+    detailsSpan.value = record.study_date;
+    detailsSpan.addEventListener("change", () => updateRecord(record.id, record.reviewed, detailsSpan.value, understandingSpan.value));
+
+    // 理解度の表示
+    const understandingSpan = document.createElement("select");
+    understandingSpan.className = "record-understanding";
+    const options = [
+      { value: "1", label: "よく分かった" },
+      { value: "2", label: "少し分かった" },
+      { value: "3", label: "復習が必要" }
+    ];
+    
+    options.forEach((option) => {
+      const opt = document.createElement("option");
+      opt.value = option.value;
+      opt.textContent = option.label;
+      understandingSpan.appendChild(opt);
+    });
+    understandingSpan.value = record.understanding;
+    understandingSpan.addEventListener("change", () => updateRecord(record.id, record.reviewed, detailsSpan.value, understandingSpan.value));
 
     // label の中に [チェックボックス][タイトル] を入れる
     label.appendChild(checkbox);
@@ -186,11 +217,13 @@ function renderTodos(todos) {
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "delete-button";
     deleteBtn.textContent = "削除";
-    deleteBtn.addEventListener("click", () => deleteTodo(todo.id));
+    deleteBtn.addEventListener("click", () => deleteRecord(record.id));
 
-    // <li> の中に [label][削除ボタン] を入れて、リストに追加する
+    // <li> の中に [label][削除ボタン][日付][理解度] を入れて、リストに追加する
     li.appendChild(label);
     li.appendChild(deleteBtn);
+    li.appendChild(detailsSpan);
+    li.appendChild(understandingSpan);
 
     list.appendChild(li);
   });
@@ -216,10 +249,10 @@ function showError(message) {
 // ============================================================
 
 // フォームが送信された（追加ボタン or Enter）ときの動き
-document.getElementById("todo-form").addEventListener("submit", function (e) {
+document.getElementById("record-form").addEventListener("submit", function (e) {
   e.preventDefault(); // ページが再読み込みされる標準動作を止める
-  addTodo(); // 自分で用意した追加処理を呼ぶ
+  addRecord(); // 自分で用意した追加処理を呼ぶ
 });
 
-// ページ読み込み時に、まずTODO一覧を取得して表示する（ここがスタート地点）
-loadTodos();
+// ページ読み込み時に、まず学習記録一覧を取得して表示する（ここがスタート地点）
+loadRecords();

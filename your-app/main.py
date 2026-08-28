@@ -1,8 +1,5 @@
-"""
-TODOアプリ バックエンド - 完成版
-第8回: セキュリティの基礎 & 総仕上げ
-"""
 
+import os  # ファイルパス操作用
 import sqlite3  # Python標準のデータベース（SQLite）を使うためのライブラリ
 import uvicorn  # FastAPIアプリを動かすためのWebサーバー
 
@@ -13,7 +10,7 @@ from pydantic import BaseModel, Field  # 受け取るデータの形をチェッ
 
 # --- FastAPIアプリ ---
 # このappが、Webアプリ全体の本体になる
-app = FastAPI(title="TODO App")
+app = FastAPI(title="学習記録アプリ")
 
 # CORS設定: 別のアドレスで動くフロント（ブラウザの画面）からの通信を許可する
 # allow_origins=["*"] は「どこからのアクセスでもOK」という意味（学習用の設定）
@@ -26,23 +23,26 @@ app.add_middleware(
 )
 
 # --- データベース設定 ---
-# データを保存するファイルの名前。アプリと同じフォルダに todo.db が作られる
-DATABASE = "todo.db"
+# データを保存するファイルの名前。アプリと同じフォルダに study_records.db が作られる
+DATABASE = "study_records.db"
 
 
 def init_db():
     """データベースとテーブルを初期化する"""
     conn = sqlite3.connect(DATABASE)  # データベースに接続する
     cursor = conn.cursor()  # SQLを実行する係（カーソル）を用意する
-    # todos テーブルがまだ無ければ作る（IF NOT EXISTS）
+    # study_records テーブルがまだ無ければ作る（IF NOT EXISTS）
     #   id    : 自動で増える番号（主キー）
-    #   title : TODOの内容（空はNG）
-    #   done  : 完了したかどうか（0=未完了, 1=完了）
+    #   title : study_recordの内容（空はNG）
+    #   reviewed  : 完了したかどうか（0=未完了, 1=完了）
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS todos (
+        CREATE TABLE IF NOT EXISTS study_records (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
-            done INTEGER DEFAULT 0
+            category TEXT NOT NULL DEFAULT '未分類',
+            study_date DATE NOT NULL,
+            understanding TEXT NOT NULL,
+            reviewed INTEGER DEFAULT 0
         )
     """)
     conn.commit()  # 変更を確定して保存する
@@ -54,16 +54,20 @@ def init_db():
 # 形に合わないデータが送られてきたら、FastAPIが自動でエラーを返してくれる。
 
 
-class TodoCreate(BaseModel):
-    # 新しいTODOを作るときに受け取るデータ
+class RecordCreate(BaseModel):
+    # 新しいstudy_recordを作るときに受け取るデータ
     # title は1文字以上100文字以下の文字列でなければならない
     title: str = Field(min_length=1, max_length=100)
+    category: str = Field(min_length=1, max_length=100)
+    study_date: str = Field(min_length=1, max_length=20)
+    understanding: str = Field(min_length=1 , max_length=20)
 
-
-class TodoUpdate(BaseModel):
-    # TODOを更新するときに受け取るデータ
-    # done は True / False（完了したかどうか）
-    done: bool
+class RecordUpdate(BaseModel):
+    # study_recordを更新するときに受け取るデータ
+    # reviewed は True / False（確認したかどうか）
+    reviewed: bool
+    study_date: str = Field(min_length=1, max_length=20)
+    understanding: str = Field(min_length=1, max_length=20)
 
 
 # --- APIエンドポイント ---
@@ -71,94 +75,97 @@ class TodoUpdate(BaseModel):
 # 「どのURLに、どの種類のリクエストが来たら、この関数を動かすか」を決める。
 
 
-@app.get("/todos")  # GET /todos にアクセスされたら実行
-def get_todos():
-    """TODO一覧を取得する"""
+@app.get("/records")  # GET /records にアクセスされたら実行
+def get_study_records():
+    """study_record一覧を取得する"""
     conn = sqlite3.connect(DATABASE)  # 接続する
     cursor = conn.cursor()
 
-    # todos テーブルの全データを id 順に取り出す
-    cursor.execute("SELECT id, title, done FROM todos ORDER BY id")
-    todos = cursor.fetchall()  # 取り出した全行をリストで受け取る
+    # study_records テーブルの全データを id 順に取り出す
+    cursor.execute("SELECT id, title, category, study_date, understanding, reviewed FROM study_records ORDER BY id")
+    study_records = cursor.fetchall()  # 取り出した全行をリストで受け取る
 
     conn.close()  # 接続を閉じる
-    # 1行は (id, title, done) の順のタプルなので、番号で取り出す。
+    # 1行は (id, title, category, study_date, understanding, reviewed) の順のタプルなので、番号で取り出す。
     # 取り出したデータを、ブラウザに返しやすい辞書のリストに作り変える。
     return [
-        {"id": todo[0], "title": todo[1], "done": bool(todo[2])}
-        for todo in todos
+        {"id": study_record[0], "title": study_record[1], "category": study_record[2], "study_date": study_record[3], "understanding": study_record[4], "reviewed": bool(study_record[5])}
+        for study_record in study_records
     ]
 
 
-@app.post("/todos", status_code=201)  # POST /todos で新規作成（201=作成成功）
-def create_todo(todo: TodoCreate):
-    """新しいTODOを作成する"""
+@app.post("/records", status_code=201)  # POST /records で新規作成（201=作成成功）
+def create_study_record(study_record: RecordCreate):
+    """新しいstudy_recordを作成する"""
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
-    # 新しいTODOを1件追加する（done は 0=未完了で登録）
+    # 新しいstudy_recordを1件追加する（reviewed は 0=未完了で登録）
     # ? を使うことで、危険な文字列が混ざってもSQLが壊れない（SQLインジェクション対策）
     cursor.execute(
-        "INSERT INTO todos (title, done) VALUES (?, 0)",
-        (todo.title,),
+        "INSERT INTO study_records (title, category, study_date, understanding) VALUES (?, ?, ?, ?)",
+        (study_record.title, study_record.category, study_record.study_date, study_record.understanding),
     )
     conn.commit()  # 追加を確定する
-    todo_id = cursor.lastrowid  # たった今追加した行の id を取得する
+    study_record_id = cursor.lastrowid  # たった今追加した行の id を取得する
 
     conn.close()
-    return {"id": todo_id, "title": todo.title, "done": False}
+    return {"id": study_record_id, "title": study_record.title, "category": study_record.category, "study_date": study_record.study_date, "understanding": study_record.understanding, "reviewed": False}
 
 
-# PUT /todos/5 のように、URLの {todo_id} の部分が引数 todo_id に入る
-@app.put("/todos/{todo_id}")
-def update_todo(todo_id: int, todo: TodoUpdate):
-    """TODOの完了状態を更新する"""
+# PUT /records/5 のように、URLの {study_record_id} の部分が引数 study_record_id に入る
+@app.put("/records/{study_record_id}")
+def update_study_record(study_record_id: int, study_record: RecordUpdate):
+    """study_recordの完了状態を更新する"""
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
-    # まず、その id のTODOが本当にあるか確認する
-    cursor.execute("SELECT title FROM todos WHERE id = ?", (todo_id,))
+    # まず、その id のstudy_recordが本当にあるか確認する
+    cursor.execute("SELECT title, category, study_date, understanding, reviewed FROM study_records WHERE id = ?", (study_record_id,))
     existing = cursor.fetchone()  # 1件だけ取り出す。無ければ None が返る
     if existing is None:
         conn.close()  # 見つからないときも接続は閉じてから終わる
         # 404エラー（見つからない）を返して処理を中断する
-        raise HTTPException(status_code=404, detail="TODO not found")
+        raise HTTPException(status_code=404, detail="study_record not found")
 
-    # done（完了状態）を更新する。True/False は int() で 1/0 に変換して保存
+    # reviewed（完了状態）を更新する。True/False は int() で 1/0 に変換して保存
     cursor.execute(
-        "UPDATE todos SET done = ? WHERE id = ?",
-        (int(todo.done), todo_id),
+        "UPDATE study_records SET reviewed = ?, study_date = ?, understanding = ? WHERE id = ?",
+        (int(study_record.reviewed), study_record.study_date, study_record.understanding, study_record_id),
     )
     conn.commit()  # 更新を確定する
 
     conn.close()
-    # existing は (title,) のタプルなので、先頭を取り出す
-    return {"id": todo_id, "title": existing[0], "done": todo.done}
+    # existing は (title, category, study_date, understanding, reviewed) のタプルなので、各要素を取り出す
+    return {"id": study_record_id, "title": existing[0], "category": existing[1], "study_date": study_record.study_date, "understanding": study_record.understanding, "reviewed": study_record.reviewed}
 
 
-@app.delete("/todos/{todo_id}")  # DELETE /todos/5 で id=5 のTODOを削除
-def delete_todo(todo_id: int):
-    """TODOを削除する"""
+@app.delete("/records/{study_record_id}")  # DELETE /records/5 で id=5 のstudy_recordを削除
+def delete_study_record(study_record_id: int):
+    """study_recordを削除する"""
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
-    # 削除する前に、その id のTODOが存在するか確認する
-    cursor.execute("SELECT id FROM todos WHERE id = ?", (todo_id,))
+    # 削除する前に、その id のstudy_recordが存在するか確認する
+    cursor.execute("SELECT id FROM study_records WHERE id = ?", (study_record_id,))
     existing = cursor.fetchone()
     if existing is None:
         conn.close()
-        raise HTTPException(status_code=404, detail="TODO not found")
+        raise HTTPException(status_code=404, detail="study_record not found")
 
-    cursor.execute("DELETE FROM todos WHERE id = ?", (todo_id,))  # 削除する
+    cursor.execute("DELETE FROM study_records WHERE id = ?", (study_record_id,))  # 削除する
     conn.commit()  # 削除を確定する
 
     conn.close()
-    return {"message": "TODO deleted", "id": todo_id}
+    return {"message": "study_record deleted", "id": study_record_id}
 
 
 # --- 静的ファイル配信 ---
 # static フォルダの中身（index.html など）をそのままブラウザに表示できるようにする
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+# このファイルのディレクトリを基準に、static フォルダの絶対パスを作る
+# これにより、どのディレクトリから main.py を実行しても正しく動く
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 # --- アプリ起動時にDBを初期化 ---
 # プログラムが読み込まれたタイミングで、テーブルが無ければ作っておく
