@@ -98,13 +98,13 @@ async function addRecord() {
  * TODOの完了状態を切り替える
  * id: 対象のTODOの番号 / currentDone: いまの完了状態(true/false)
  */
-async function toggleRecord(id, currentReviewed) {
+async function updateRecord(id, currentReviewed, study_date, understanding) {
   try {
     // `${API_URL}/${id}` で /todos/5 のようなアドレスを作る（id=5のTODOが対象）
     const response = await fetch(`${API_URL}/${id}`, {
       method: "PUT", // PUT = 既存のデータを更新する
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reviewed: !currentReviewed }), // !で reviewed/未reviewed を反転させる
+      body: JSON.stringify({ reviewed: currentReviewed, study_date: study_date, understanding: understanding }),
     });
 
     if (!response.ok) {
@@ -176,13 +176,38 @@ function renderRecords(records) {
     checkbox.className = "record-checkbox";
     checkbox.checked = record.reviewed; // いまの完了状態をチェックに反映
     // チェックが変わったら、完了状態を切り替える関数を呼ぶ
-    checkbox.addEventListener("change", () => toggleRecord(record.id, record.reviewed));
+    checkbox.addEventListener("change", () => updateRecord(record.id, checkbox.checked, detailsSpan.value, understandingSpan.value));
 
     // 学習記録のタイトル文字。textContent で安全に入れる（XSS対策）
     const titleSpan = document.createElement("span");
     titleSpan.className = "record-title";
     titleSpan.textContent = record.title;
     titleSpan.title = `カテゴリ: ${record.category}\n学習日: ${record.study_date}\n理解度: ${record.understanding}`;
+
+    // 日付の表示
+    const detailsSpan = document.createElement("input");
+    detailsSpan.className = "record-details";
+    detailsSpan.type = "date";
+    detailsSpan.value = record.study_date;
+    detailsSpan.addEventListener("change", () => updateRecord(record.id, record.reviewed, detailsSpan.value, understandingSpan.value));
+
+    // 理解度の表示
+    const understandingSpan = document.createElement("select");
+    understandingSpan.className = "record-understanding";
+    const options = [
+      { value: "1", label: "よく分かった" },
+      { value: "2", label: "少し分かった" },
+      { value: "3", label: "復習が必要" }
+    ];
+    
+    options.forEach((option) => {
+      const opt = document.createElement("option");
+      opt.value = option.value;
+      opt.textContent = option.label;
+      understandingSpan.appendChild(opt);
+    });
+    understandingSpan.value = record.understanding;
+    understandingSpan.addEventListener("change", () => updateRecord(record.id, record.reviewed, detailsSpan.value, understandingSpan.value));
 
     // label の中に [チェックボックス][タイトル] を入れる
     label.appendChild(checkbox);
@@ -194,9 +219,11 @@ function renderRecords(records) {
     deleteBtn.textContent = "削除";
     deleteBtn.addEventListener("click", () => deleteRecord(record.id));
 
-    // <li> の中に [label][削除ボタン] を入れて、リストに追加する
+    // <li> の中に [label][削除ボタン][日付][理解度] を入れて、リストに追加する
     li.appendChild(label);
     li.appendChild(deleteBtn);
+    li.appendChild(detailsSpan);
+    li.appendChild(understandingSpan);
 
     list.appendChild(li);
   });

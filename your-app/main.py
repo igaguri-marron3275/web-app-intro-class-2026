@@ -66,6 +66,8 @@ class RecordUpdate(BaseModel):
     # study_recordを更新するときに受け取るデータ
     # reviewed は True / False（確認したかどうか）
     reviewed: bool
+    study_date: str = Field(min_length=1, max_length=20)
+    understanding: str = Field(min_length=1, max_length=20)
 
 
 # --- APIエンドポイント ---
@@ -128,14 +130,14 @@ def update_study_record(study_record_id: int, study_record: RecordUpdate):
 
     # reviewed（完了状態）を更新する。True/False は int() で 1/0 に変換して保存
     cursor.execute(
-        "UPDATE study_records SET reviewed = ? WHERE id = ?",
-        (int(study_record.reviewed), study_record_id),
+        "UPDATE study_records SET reviewed = ?, study_date = ?, understanding = ? WHERE id = ?",
+        (int(study_record.reviewed), study_record.study_date, study_record.understanding, study_record_id),
     )
     conn.commit()  # 更新を確定する
 
     conn.close()
     # existing は (title, category, study_date, understanding, reviewed) のタプルなので、各要素を取り出す
-    return {"id": study_record_id, "title": existing[0], "category": existing[1], "study_date": existing[2], "understanding": existing[3], "reviewed": study_record.reviewed}
+    return {"id": study_record_id, "title": existing[0], "category": existing[1], "study_date": study_record.study_date, "understanding": study_record.understanding, "reviewed": study_record.reviewed}
 
 
 @app.delete("/records/{study_record_id}")  # DELETE /records/5 で id=5 のstudy_recordを削除
